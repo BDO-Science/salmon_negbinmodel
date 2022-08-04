@@ -1,2 +1,2 @@
 # salmon_negbinmodel
-Model salvage 
+Model salvaged salmon
