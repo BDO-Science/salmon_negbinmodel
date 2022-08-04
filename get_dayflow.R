@@ -38,10 +38,12 @@ get_dayflow <- function(){
   i <- which(!duplicated(dayflow))
   dayflow <- dayflow[i, ]
   
+  # start when data starts
+  dayflow_clean <- na.omit(dayflow)
   
   # write out
   #utils::write.csv(dayflow, file.path(rappdirs::user_cache_dir("data_raw"), "exports_dayflow.csv"), row.names = FALSE)
-  write.csv(dayflow, file.path("data_raw", "exports_dayflow.csv"), row.names = FALSE)
+  write.csv(dayflow_clean, file.path("data_raw", "exports_dayflow.csv"), row.names = FALSE)
   return(dayflow)
   
 }
