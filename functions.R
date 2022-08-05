@@ -1,3 +1,5 @@
+#List of functions to pull data for the negative binomial model
+
 
 #Code from Trinh Nguyen's Entrainment Data Pull 8/4/2022; fixed incorrect end_date url
 calc_OMR <- function(dateStart, dateEnd = NULL, timing, extrap = F, proof = F, showQAQC = F) {
@@ -153,10 +155,8 @@ calc_OMR <- function(dateStart, dateEnd = NULL, timing, extrap = F, proof = F, s
 }
 
 
-
-
+#Code to pull Dayflow data from Pascale Goertler https://github.com/goertler/inundation/blob/main/R/get_dayflow.R
 get_dayflow <- function(){
-  
   # get metadata
   m <- jsonlite::fromJSON("https://data.cnra.ca.gov/dataset/06ee2016-b138-47d7-9e85-f46fae674536.jsonld")
   
