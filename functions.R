@@ -198,3 +198,34 @@ get_dayflow <- function(){
   return(dayflow_clean)
   
 }
+
+
+#Function adjusted from Trinh Nguyen's code to pull salvage datasets from SacPAS
+pull_salvage <- function(salvageURL = "http://www.cbr.washington.edu/sacramento/data/query_loss_detail.html") {
+  startingSession <- session(salvageURL)
+  startingForm <- html_form(startingSession)[[1]]
+  
+  df <- lapply(startingForm$fields$year$options, function(x) {
+    filledForm <- set_values(startingForm,
+                             year = x,
+                             species = "1:f")
+    
+    submittedFormURL <- suppressMessages(submit_form(session = startingSession, 
+                                                     form = filledForm, POST = salvageURL)$url)
+    
+    csvLink <- submittedFormURL
+    
+    if (length(csvLink) == 0) {
+      return(NULL)
+    } else {
+      csvDownload <- csvLink
+    }
+    
+    df <- csvDownload %>% 
+      read_csv() %>% filter(!is.na(nfish)) }) %>%
+    bind_rows() 
+  df
+}
+
+
+
