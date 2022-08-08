@@ -5,6 +5,7 @@ library(rvest)
 library(tabulizer)
 library(lubridate)
 library(rgdal)
+library(janitor)
 
 source("functions.R")
 
@@ -25,10 +26,10 @@ data_OMR <- calc_OMR(dateStart = "1993-01-01",dateEnd = "2022-08-01", timing = "
 #data from 1992-12-19 to 2022-08-01
 
 #data_OMR summary
-data_OMR_sum <- data_OMR %>% mutate(Month=month(Date),Year=year(Date)) %>% group_by(Month, Year) %>%
-  filter(Month %in% c(1,2,3,4,5,6,11,12)) %>% group_by(Month, Year) %>% summarise(omrFlowExtrap=mean(omrFlowExtrap, na.rm=T))
+data_OMR_sum <- data_OMR %>% 
+  filter(month %in% c(1,2,3,4,5,6,11,12)) %>% group_by(month, year) %>%summarise(omrFlowExtrap=mean(omrFlowExtrap, na.rm=T))
 
-data_OMR_samplesize<-data_OMR_sum %>% mutate(samplesize=1) %>% group_by(Year) %>% summarise(samplesize=sum(samplesize))
+data_OMR_samplesize<-data_OMR_sum %>% mutate(samplesize=1) %>% group_by(year) %>% summarise(samplesize=sum(samplesize))
 #Each month has data
 remove(data_OMR_sum,data_OMR_samplesize)
 
@@ -127,6 +128,22 @@ final_df<- full_join(dayflow_combined,data_OMR) %>% filter(year(Date)>=1993) %>%
          Spring_LAD_Loss = replace_na(Spring_LAD_Loss, 0),
          Spring_ExpandedSalvage = replace_na(Spring_ExpandedSalvage, 0)) %>%
   left_join(sactrawl_data) %>% #Restrict to just 12-31-2020 based on Sac Trawl data
-  filter(year(Date)<2021)
+  filter(year(Date)<2021) %>%
+  janitor::clean_names()
   
 write.csv(final_df,file="negbinmodel_daily_dataset.csv", row.names = F)
+
+###############
+###############
+# Monthly dataset
+monthly_df <- final_df %>%
+  mutate(year = year(date),
+         month = month(date)) %>%
+  select(-date) %>%
+  group_by(year, month) %>%
+  summarize(across(.cols = everything(), ~mean(.x,na.rm = TRUE)))%>%
+  ungroup() %>%
+  mutate(across(.cols = everything(), ~ifelse(is.nan(.x), NA, .x)))
+
+write.csv(monthly_df, file = "negbinmodel_monthly_dataset.csv", row.names = F)
+

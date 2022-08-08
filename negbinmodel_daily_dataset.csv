@@ -1,4 +1,4 @@
-"Date","Sac_flow","SanJoaquin_flow","Export","DeltaOutflow","omrFlowExtrap","Winter_LAD_Loss","Winter_ExpandedSalvage","Spring_LAD_Loss","Spring_ExpandedSalvage","SacTrawlWR_Count","SacTrawl_SampleSize","SacTrawlSR_Count"
+"date","sac_flow","san_joaquin_flow","export","delta_outflow","omr_flow_extrap","winter_lad_loss","winter_expanded_salvage","spring_lad_loss","spring_expanded_salvage","sac_trawl_wr_count","sac_trawl_sample_size","sac_trawl_sr_count"
 1993-01-01,14400,1000,10809,14261,-8780,245.59,56,0,0,NA,NA,NA
 1993-01-02,22100,1060,10645,24313,-8190,199.37,45.65,0,0,NA,NA,NA
 1993-01-03,34600,1080,8180,33072,-7600,70.2,16,0,0,NA,NA,NA
