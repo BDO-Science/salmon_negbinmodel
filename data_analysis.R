@@ -132,7 +132,7 @@ aictab(cand.set = Cand.set.WR, modnames = Modnames, sort = TRUE)
 summary(Cand.set.WR[[14]])
 summary(Cand.set.WR[[26]])
 
-
+# Model coefficients
 est <- cbind(Estimate = coef(Cand.set.WR[[14]]), confint(Cand.set.WR[[14]]))
 exp(est)
 
@@ -164,3 +164,47 @@ summary(loocv.lm)
 
 plot(log(Pred.dat$Observed.dat), log(Pred.dat$Pred.NegBin), xlim=c(0, 9), ylim=c(0, 9))
 abline(loocv.lm, col="red")
+
+# Redo model with standard (original) values and ensure that results are essentially the same
+model_wr_final<-glm.nb(winter_lad_loss~month_factor+san_joaquin_flow+sac_trawl_wr_CPUE+export, data=data_WR)
+
+##############################
+#Model selection for spring-run
+
+Cand.set.SR <- list( )
+
+Cand.set.SR[[1]] <-  glm.nb(winter_lad_loss~NULL, data=data_SR)
+Cand.set.SR[[2]] <-  glm.nb(winter_lad_loss~month_factor, data=data_SR)
+Cand.set.SR[[3]] <-  glm.nb(winter_lad_loss~san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[4]] <-  glm.nb(winter_lad_loss~export_z, data=data_SR)
+Cand.set.SR[[5]] <-  glm.nb(winter_lad_loss~sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[6]] <-  glm.nb(winter_lad_loss~month_factor+san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[7]] <-  glm.nb(winter_lad_loss~month_factor+export_z, data=data_SR)
+Cand.set.SR[[8]] <-  glm.nb(winter_lad_loss~month_factor+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[9]] <-  glm.nb(winter_lad_loss~san_joaquin_flow_z+export_z, data=data_SR)
+Cand.set.SR[[10]] <-  glm.nb(winter_lad_loss~san_joaquin_flow_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[11]] <-  glm.nb(winter_lad_loss~export_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[12]] <-  glm.nb(winter_lad_loss~month_factor+san_joaquin_flow_z+export_z, data=data_SR)
+Cand.set.SR[[13]] <-  glm.nb(winter_lad_loss~month_factor+san_joaquin_flow_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[14]] <-  glm.nb(winter_lad_loss~month_factor+san_joaquin_flow_z+sac_trawl_sr_CPUE_z+export_z, data=data_SR)
+Cand.set.SR[[15]] <-  glm.nb(winter_lad_loss~month_factor*san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[16]] <-  glm.nb(winter_lad_loss~month_factor*san_joaquin_flow_z+export_z, data=data_SR)
+Cand.set.SR[[17]] <-  glm.nb(winter_lad_loss~month_factor*san_joaquin_flow_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[18]] <-  glm.nb(winter_lad_loss~month_factor*san_joaquin_flow_z+sac_trawl_sr_CPUE_z+export_z, data=data_SR)
+Cand.set.SR[[19]] <-  glm.nb(winter_lad_loss~month_factor*export_z, data=data_SR)
+Cand.set.SR[[20]] <-  glm.nb(winter_lad_loss~month_factor*export_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[21]] <-  glm.nb(winter_lad_loss~month_factor*export_z+san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[22]] <-  glm.nb(winter_lad_loss~month_factor*export_z+sac_trawl_sr_CPUE_z+san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[23]] <-  glm.nb(winter_lad_loss~month_factor*sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[24]] <-  glm.nb(winter_lad_loss~month_factor*sac_trawl_sr_CPUE_z+san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[25]] <-  glm.nb(winter_lad_loss~month_factor*sac_trawl_sr_CPUE_z+export_z, data=data_SR)
+Cand.set.SR[[26]] <-  glm.nb(winter_lad_loss~month_factor*sac_trawl_sr_CPUE_z+export_z+san_joaquin_flow_z, data=data_SR)
+
+
+##create a vector of names to trace back models in set
+Modnames <- paste("mod","SpringRun", 1:length(Cand.set.SR), sep = "_")
+
+##generate AICc table
+aictab(cand.set = Cand.set.SR, modnames = Modnames, sort = TRUE)
+
+#Cand.set.SR[[7]] <-  glm.nb(winter_lad_loss~month_factor+export_z, data=data_SR)
