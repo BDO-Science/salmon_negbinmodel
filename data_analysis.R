@@ -167,6 +167,31 @@ abline(loocv.lm, col="red")
 
 # Redo model with standard (original) values and ensure that results are essentially the same
 model_wr_final<-glm.nb(winter_lad_loss~month_factor+san_joaquin_flow+sac_trawl_wr_CPUE+export, data=data_WR)
+# Looping prediction of best model
+
+Pred.dat <- data.frame(Observed.dat = rep(NA, nrow(data_WR)), Pred.NegBin = rep(NA, nrow(data_WR)))
+head(Pred.dat)
+
+for(i in 1:nrow(data_WR)){
+  Hat.dat <- data_WR[-i, ]
+  CV.dat <- data_WR[i, ]
+  Temp.mod1 <- glm.nb(winter_lad_loss~month_factor+san_joaquin_flow+sac_trawl_wr_CPUE+export, data=Hat.dat)
+  Pred.dat[i, "Observed.dat"] <- CV.dat[, "winter_lad_loss"]
+  Pred.dat[i, "Pred.NegBin"] <- predict(Temp.mod1, newdata = CV.dat, type="response")
+}
+
+head(Pred.dat)
+
+plot(Pred.dat$Observed.dat, Pred.dat$Pred.NegBin)
+
+loocv.lm <- lm(log(Pred.NegBin+1)~log(Observed.dat+1), data=Pred.dat)
+summary(loocv.lm)
+
+plot(log(Pred.dat$Observed.dat), log(Pred.dat$Pred.NegBin), xlim=c(0, 9), ylim=c(0, 9))
+abline(loocv.lm, col="red")
+
+# Saving final winter-run model
+saveRDS(model_wr_final, file = "model_winter_run_final.rda")
 
 ##############################
 #Model selection for spring-run
@@ -208,3 +233,28 @@ Modnames <- paste("mod","SpringRun", 1:length(Cand.set.SR), sep = "_")
 aictab(cand.set = Cand.set.SR, modnames = Modnames, sort = TRUE)
 
 #Cand.set.SR[[7]] <-  glm.nb(winter_lad_loss~month_factor+export_z, data=data_SR)
+
+
+# Looping prediction of best model
+
+Pred.dat <- data.frame(Observed.dat = rep(NA, nrow(data_SR)), Pred.NegBin = rep(NA, nrow(data_SR)))
+head(Pred.dat)
+
+for(i in 1:nrow(data_SR)){
+  Hat.dat <- data_SR[-i, ]
+  CV.dat <- data_SR[i, ]
+  Temp.mod1 <- glm.nb(spring_lad_loss~month_factor+export_z, data=Hat.dat)
+  Pred.dat[i, "Observed.dat"] <- CV.dat[, "spring_lad_loss"]
+  Pred.dat[i, "Pred.NegBin"] <- predict(Temp.mod1, newdata = CV.dat, type="response")
+}
+
+head(Pred.dat)
+
+plot(Pred.dat$Observed.dat, Pred.dat$Pred.NegBin)
+
+loocv.lm <- lm(log(Pred.NegBin+1)~log(Observed.dat+1), data=Pred.dat)
+summary(loocv.lm)
+#Multiple R-squared:   0.5711,	Adjusted R-squared:  0.5672 
+
+plot(log(Pred.dat$Observed.dat), log(Pred.dat$Pred.NegBin), xlim=c(0, 9), ylim=c(0, 9))
+abline(loocv.lm, col="red")
