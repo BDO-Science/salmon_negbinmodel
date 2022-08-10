@@ -138,7 +138,9 @@ write.csv(final_df,file="negbinmodel_daily_dataset.csv", row.names = F)
 # Monthly dataset
 monthly_df <- final_df %>%
   mutate(year = year(date),
-         month = month(date)) %>%
+         month = month(date), 
+         sac_trawl_wr_cpue = sac_trawl_wr_count/sac_trawl_sample_size,
+         sac_trawl_sr_cpue = sac_trawl_sr_count/sac_trawl_sample_size) %>%
   select(-date) %>%
   group_by(year, month) %>%
   summarize(across(.cols = everything(), ~mean(.x,na.rm = TRUE)))%>%
