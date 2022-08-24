@@ -21,6 +21,7 @@ library("pscl")
 library("tidyverse")
 library("AICcmodavg")
 library("knitr")
+library("PerformanceAnalytics")
 
 setwd("~/GitHub/salmon_negbinmodel")
 ```
@@ -40,7 +41,7 @@ str(monthly_data)
 ## Methods
 
 ### Data
-Winter-run and spring-run length-at-date Chinook Salmon salvage records from January 1st 1993 to December 31st 2020 were gathered from the California Department of Fish and Wildlife salvage database posted at the SacPAS website (http://www.cbr.washington.edu/sacramento/data/query_loss_detail.html). To incorporate hydrodynamic effects on salvage count into the models, Delta export (QEXPORT), Sacramento River flow (QSAC), and San Joaquin River (QSJR) were extracted from the California Department of Water Resources Dayflow data (https://data.cnra.ca.gov/dataset/dayflow). Additionally, combined Old and Middle River flow (OMR) data were pulled from the U.S. Geological Survey National Water Information System website (https://nwis.waterdata.usgs.gov/nwis; stations 11313405 and 11312676). Because data gaps exist in the Old and Middle River flow data, ordinary least squares regressions were conducted so that each dataset can be used to predict, and therefore fill, missing data in the other (adjusted $R^2$: 0.97). Lastly, to account for the variable numbers of juvenile Chinook Salmon entering the Delta by year and month, Sacramento Trawl data were acquired from the Delta Juvenile Fish Monitoring Program through the 'deltafish' package available on GitHub (https://github.com/jeanetteclark/deltaFish). Sacramento Trawl catch per unit trawl for each day was calculated for both winter-run sized and spring-run sized Chinook Salmon. 
+Winter-run and spring-run length-at-date Chinook Salmon daily expanded salvage records from January 1st 1993 to December 31st 2020 were gathered from the California Department of Fish and Wildlife salvage database posted at the SacPAS website (http://www.cbr.washington.edu/sacramento/data/query_loss_detail.html). To incorporate hydrodynamic effects on salvage count into the models, Delta export (QEXPORT), Sacramento River flow (QSAC), and San Joaquin River (QSJR) were extracted from the California Department of Water Resources Dayflow data (https://data.cnra.ca.gov/dataset/dayflow). Additionally, combined Old and Middle River flow (OMR) data were pulled from the U.S. Geological Survey National Water Information System website (https://nwis.waterdata.usgs.gov/nwis; stations 11313405 and 11312676). Because data gaps exist in the Old and Middle River flow data, ordinary least squares regressions were conducted so that each dataset can be used to predict, and therefore fill, missing data in the other (adjusted $R^2$: 0.97). Lastly, to account for the variable numbers of juvenile Chinook Salmon entering the Delta by year and month, Sacramento Trawl data were acquired from the Delta Juvenile Fish Monitoring Program through the 'deltafish' package available on GitHub (https://github.com/jeanetteclark/deltaFish). Sacramento Trawl catch per unit trawl for each day was calculated for both winter-run sized and spring-run sized Chinook Salmon. 
 
 ```{r monthly summary, echo=FALSE}
 #Preliminary assessment for month to use
@@ -50,6 +51,33 @@ month_summary<- monthly_data %>% group_by(month) %>% summarise(mean_winter_lad_l
 #March-June for Spring-run
 
 kable(month_summary, caption="Monthly average value summary table")
+```
+```{r data subset,echo=FALSE}
+
+#Data for winter-run
+data_WR<-monthly_data %>% filter(month %in% c(12,1,2,3,4)) %>%
+  #standardize data by z-score and add Sac Trawl CPUE, also convert month to factor
+  mutate(sac_flow_z = scale(sac_flow),
+         san_joaquin_flow_z = scale(san_joaquin_flow),
+         export_z = scale(export),
+         delta_outflow_z = scale(delta_outflow),
+         omr_flow_extrap_z = scale(omr_flow_extrap),
+         sac_trawl_wr_CPUE_z = scale(sac_trawl_wr_cpue),
+         month_factor=as.factor(month))
+
+
+#Data for spring-run
+data_SR<-monthly_data %>% filter(month %in% c(3,4,5,6)) %>%
+  #standardize data by z-score and add Sac Trawl CPUE
+  mutate(sac_flow_z = scale(sac_flow),
+         san_joaquin_flow_z = scale(san_joaquin_flow),
+         export_z = scale(export),
+         delta_outflow_z = scale(delta_outflow),
+         omr_flow_extrap_z = scale(omr_flow_extrap),
+         sac_trawl_sr_CPUE_z = scale(sac_trawl_sr_cpue),
+         month_factor=as.factor(month)
+  )
+
 ```
 
 For each variable, data were averaged by month and year with missing data removed. Because monthly salvage values tend to be low or mostly zeroes in for most months out of the year, only December to April period was used for winter-run Chinook Salmon analysis, and only March to June period was used for spring-run Chinook Salmon analysis. Overdispersion was apparent during initial inspection  the response variable data (mean $\neq$ variance) supporting the use of negative binomial regression in this analysis. 
@@ -72,6 +100,232 @@ mtext(2, text="Frequency", line = 3)
 
 ### VIF analysis
 
-To avoid collinearity, variance inflation factor (VIF) analyses were conducted for all predictor variables mentioned above. A full negative binomial regression model with all predictor variables was constructed for each Chinook Salmon race (winter-run and spring-run), followed by an assessment of VIF values. Per Zuur et al. (2010), variable with the highest VIF value was removed and models were re-run until all VIF values are below 3. For both winter-run and spring-run Chinook Salmon models, OMR had the highest VIF value (>25) and had to be removed from further analysis along with Sacramento River flow. 
+To avoid collinearity, variance inflation factor (VIF) analyses were conducted for all predictor variables mentioned above. A full negative binomial regression model with all predictor variables was constructed for each Chinook Salmon race (winter-run and spring-run), followed by an assessment of VIF values. Per Zuur et al. (2010), variable with the highest VIF value was removed and models were re-run until all VIF values are below 3. For both winter-run and spring-run Chinook Salmon models, OMR had the highest VIF value (>25) and had to be removed from further analysis along with Sacramento River flow. For the final model selection, covariates included were: San Joaquin River flow, Delta export flow value, Sacramento Trawl catch per unit effort (specific to each race), and monthly categorical variable. Each continuous covariate was standardized to z-score prior to the model selection process.
 
+
+```{r VIF, message=FALSE, warning=FALSE}
+
+## Winter-run model VIF screening
+wr_full_model<-glm.nb(winter_expanded_salvage~ sac_flow_z + san_joaquin_flow_z + export_z + omr_flow_extrap_z + sac_trawl_wr_CPUE_z, data=data_WR)
+car::vif(wr_full_model)
+#sac_flow_z  san_joaquin_flow_z            export_z   omr_flow_extrap_z sac_trawl_wr_CPUE_z 
+#3.119324           25.238260           10.548374           31.944030            1.405092 
+#Removed OMR flow due to excess collinearity (VIF > 10)
+
+wr_full_model<-glm.nb(winter_expanded_salvage~ sac_flow_z + san_joaquin_flow_z + export_z + sac_trawl_wr_CPUE_z, data=data_WR)
+car::vif(wr_full_model)
+#sac_flow_z  san_joaquin_flow_z            export_z sac_trawl_wr_CPUE_z 
+# 3.062806            2.921772            1.341683            1.281029 
+
+#Plot correlation matrix just for winter-run
+##
+chart.Correlation(data_WR %>% select(winter_expanded_salvage, sac_flow_z, san_joaquin_flow_z, export_z, sac_trawl_wr_CPUE_z), histogram=TRUE, pch=19)
+#0.77 correlation for Sac and SJ flows
+
+#We will go with 3 VIF threshold instead then
+wr_full_model<-glm.nb(winter_expanded_salvage~ san_joaquin_flow_z + export_z + sac_trawl_wr_CPUE_z, data=data_WR)
+car::vif(wr_full_model)
+#san_joaquin_flow_z   export_z sac_trawl_wr_CPUE_z 
+#1.015018            1.191279            1.203709 
+
+
+## Spring-run model VIF screening
+sr_full_model<-glm.nb(spring_expanded_salvage~ sac_flow_z + san_joaquin_flow_z + export_z + omr_flow_extrap_z + sac_trawl_sr_CPUE_z, data=data_SR)
+car::vif(sr_full_model)
+#sac_flow_z  san_joaquin_flow_z            export_z   omr_flow_extrap_z sac_trawl_sr_CPUE_z 
+#3.382381           26.180925            9.398553           29.221926            1.098351 
+#Removed OMR flow due to excess collinearity (VIF > 10)
+
+sr_full_model<-glm.nb(spring_expanded_salvage~ sac_flow_z + san_joaquin_flow_z + export_z + sac_trawl_sr_CPUE_z, data=data_SR)
+car::vif(sr_full_model)
+#sac_flow_z  san_joaquin_flow_z            export_z sac_trawl_sr_CPUE_z 
+#3.288407            3.084517            1.124690            1.097063 
+
+
+sr_full_model<-glm.nb(spring_expanded_salvage~ san_joaquin_flow_z + export_z + sac_trawl_sr_CPUE_z, data=data_SR)
+car::vif(sr_full_model)
+#san_joaquin_flow_z   export_z  sac_trawl_sr_CPUE_z 
+#1.110267            1.056263            1.077446 
+
+# VIF values for both models look good ~1 after using VIF threshold of 3 instead
+
+```
+
+### Model selection
+
+For both Chinook Salmon races, the model selection process included all possible additive combination of covariates, as well as addition combination that involves at least one interaction between a continuous variable and the monthly categorical variable. This resulted in 26 possible models (including null) for each Chinook Salmon race, and the top performing model was determined by Akaike Information Criterion for small sample size (AICc). The top model identified through this model selection process was then further evaluated by using leave-one-out cross validation (LOOCV). This was done to provide a measure for model predictive performance. LOOCV involves removal of a single record from the dataset, refitting the top model to the remaining data, estimating the expected salvage count for the ‘out-of-sample’ data, and comparing the predicted vs. observed salvage count. This process is repeated for all records in the dataset. Ordinary least squares linear regression is used to compare the relationship between observed and predicted salvage counts and the resulting $R^2$ from this regression is a measure agreement between observed and predicted observations. 
+
+## Results
+
+```{r winter-run model selection, message=FALSE, warning=FALSE}
+
+##############################
+#Model selection for winter-run
+
+Cand.set.WR <- list( )
+
+Cand.set.WR[[1]] <-  glm.nb(winter_expanded_salvage~NULL, data=data_WR)
+Cand.set.WR[[2]] <-  glm.nb(winter_expanded_salvage~month_factor, data=data_WR)
+Cand.set.WR[[3]] <-  glm.nb(winter_expanded_salvage~san_joaquin_flow_z, data=data_WR)
+Cand.set.WR[[4]] <-  glm.nb(winter_expanded_salvage~export_z, data=data_WR)
+Cand.set.WR[[5]] <-  glm.nb(winter_expanded_salvage~sac_trawl_wr_CPUE_z, data=data_WR)
+Cand.set.WR[[6]] <-  glm.nb(winter_expanded_salvage~month_factor+san_joaquin_flow_z, data=data_WR)
+Cand.set.WR[[7]] <-  glm.nb(winter_expanded_salvage~month_factor+export_z, data=data_WR)
+Cand.set.WR[[8]] <-  glm.nb(winter_expanded_salvage~month_factor+sac_trawl_wr_CPUE_z, data=data_WR)
+Cand.set.WR[[9]] <-  glm.nb(winter_expanded_salvage~san_joaquin_flow_z+export_z, data=data_WR)
+Cand.set.WR[[10]] <-  glm.nb(winter_expanded_salvage~san_joaquin_flow_z+sac_trawl_wr_CPUE_z, data=data_WR)
+Cand.set.WR[[11]] <-  glm.nb(winter_expanded_salvage~export_z+sac_trawl_wr_CPUE_z, data=data_WR)
+Cand.set.WR[[12]] <-  glm.nb(winter_expanded_salvage~month_factor+san_joaquin_flow_z+export_z, data=data_WR)
+Cand.set.WR[[13]] <-  glm.nb(winter_expanded_salvage~month_factor+san_joaquin_flow_z+sac_trawl_wr_CPUE_z, data=data_WR)
+Cand.set.WR[[14]] <-  glm.nb(winter_expanded_salvage~month_factor+san_joaquin_flow_z+sac_trawl_wr_CPUE_z+export_z, data=data_WR)
+Cand.set.WR[[15]] <-  glm.nb(winter_expanded_salvage~month_factor*san_joaquin_flow_z, data=data_WR)
+Cand.set.WR[[16]] <-  glm.nb(winter_expanded_salvage~month_factor*san_joaquin_flow_z+export_z, data=data_WR)
+Cand.set.WR[[17]] <-  glm.nb(winter_expanded_salvage~month_factor*san_joaquin_flow_z+sac_trawl_wr_CPUE_z, data=data_WR)
+Cand.set.WR[[18]] <-  glm.nb(winter_expanded_salvage~month_factor*san_joaquin_flow_z+sac_trawl_wr_CPUE_z+export_z, data=data_WR)
+Cand.set.WR[[19]] <-  glm.nb(winter_expanded_salvage~month_factor*export_z, data=data_WR)
+Cand.set.WR[[20]] <-  glm.nb(winter_expanded_salvage~month_factor*export_z+sac_trawl_wr_CPUE_z, data=data_WR)
+Cand.set.WR[[21]] <-  glm.nb(winter_expanded_salvage~month_factor*export_z+san_joaquin_flow_z, data=data_WR)
+Cand.set.WR[[22]] <-  glm.nb(winter_expanded_salvage~month_factor*export_z+sac_trawl_wr_CPUE_z+san_joaquin_flow_z, data=data_WR)
+Cand.set.WR[[23]] <-  glm.nb(winter_expanded_salvage~month_factor*sac_trawl_wr_CPUE_z, data=data_WR)
+Cand.set.WR[[24]] <-  glm.nb(winter_expanded_salvage~month_factor*sac_trawl_wr_CPUE_z+san_joaquin_flow_z, data=data_WR)
+Cand.set.WR[[25]] <-  glm.nb(winter_expanded_salvage~month_factor*sac_trawl_wr_CPUE_z+export_z, data=data_WR)
+Cand.set.WR[[26]] <-  glm.nb(winter_expanded_salvage~month_factor*sac_trawl_wr_CPUE_z+export_z+san_joaquin_flow_z, data=data_WR)
+
+
+##create a vector of names to trace back models in set
+Modnames <- paste("mod","WinterRun", 1:length(Cand.set.WR), sep = "_")
+
+##generate AICc table
+aictab(cand.set = Cand.set.WR, modnames = Modnames, sort = TRUE)
+```
+```{r winter-run model results, message=FALSE, warning=FALSE}
+summary(Cand.set.WR[[26]])
+
+# Model coefficients
+est <- cbind(Estimate = coef(Cand.set.WR[[26]]), confint(Cand.set.WR[[26]]))
+exp(est)
+
+# Model residuals
+data_WR$residuals <- resid(Cand.set.WR[[26]])
+
+hist(data_WR$residuals, breaks = 20)
+
+# Looping prediction of best model
+
+Pred.dat <- data.frame(Observed.dat = rep(NA, nrow(data_WR)), Pred.NegBin = rep(NA, nrow(data_WR)))
+head(Pred.dat)
+
+for(i in 1:nrow(data_WR)){
+  Hat.dat <- data_WR[-i, ]
+  CV.dat <- data_WR[i, ]
+  Temp.mod1 <- glm.nb(winter_expanded_salvage~month_factor*sac_trawl_wr_CPUE_z+export_z+san_joaquin_flow_z, data=Hat.dat)
+  Pred.dat[i, "Observed.dat"] <- CV.dat[, "winter_expanded_salvage"]
+  Pred.dat[i, "Pred.NegBin"] <- predict(Temp.mod1, newdata = CV.dat, type="response")
+}
+
+head(Pred.dat)
+
+plot(Pred.dat$Observed.dat, Pred.dat$Pred.NegBin)
+
+loocv.lm <- lm(log(Pred.NegBin+1)~log(Observed.dat+1), data=Pred.dat)
+summary(loocv.lm)
+#Multiple R-squared:  0.4844,	Adjusted R-squared:  0.4807 
+
+plot(log(Pred.dat$Observed.dat), log(Pred.dat$Pred.NegBin), xlim=c(0, 9), ylim=c(0, 9))
+abline(loocv.lm, col="red")
+
+# Redo model with standard (original) values and ensure that results are essentially the same
+model_wr_final<-glm.nb(winter_expanded_salvage~month_factor*sac_trawl_wr_cpue+export+san_joaquin_flow, data=data_WR)
+
+# Saving final winter-run model
+saveRDS(model_wr_final, file = "model_winter_run_final.rda")
+
+
+```
+
+```{r spring-run model selection, message=FALSE, warning=FALSE}
+
+##############################
+#Model selection for spring-run
+
+Cand.set.SR <- list( )
+
+Cand.set.SR[[1]] <-  glm.nb(spring_expanded_salvage~NULL, data=data_SR)
+Cand.set.SR[[2]] <-  glm.nb(spring_expanded_salvage~month_factor, data=data_SR)
+Cand.set.SR[[3]] <-  glm.nb(spring_expanded_salvage~san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[4]] <-  glm.nb(spring_expanded_salvage~export_z, data=data_SR)
+Cand.set.SR[[5]] <-  glm.nb(spring_expanded_salvage~sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[6]] <-  glm.nb(spring_expanded_salvage~month_factor+san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[7]] <-  glm.nb(spring_expanded_salvage~month_factor+export_z, data=data_SR)
+Cand.set.SR[[8]] <-  glm.nb(spring_expanded_salvage~month_factor+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[9]] <-  glm.nb(spring_expanded_salvage~san_joaquin_flow_z+export_z, data=data_SR)
+Cand.set.SR[[10]] <-  glm.nb(spring_expanded_salvage~san_joaquin_flow_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[11]] <-  glm.nb(spring_expanded_salvage~export_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[12]] <-  glm.nb(spring_expanded_salvage~month_factor+san_joaquin_flow_z+export_z, data=data_SR)
+Cand.set.SR[[13]] <-  glm.nb(spring_expanded_salvage~month_factor+san_joaquin_flow_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[14]] <-  glm.nb(spring_expanded_salvage~month_factor+san_joaquin_flow_z+sac_trawl_sr_CPUE_z+export_z, data=data_SR)
+Cand.set.SR[[15]] <-  glm.nb(spring_expanded_salvage~month_factor*san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[16]] <-  glm.nb(spring_expanded_salvage~month_factor*san_joaquin_flow_z+export_z, data=data_SR)
+Cand.set.SR[[17]] <-  glm.nb(spring_expanded_salvage~month_factor*san_joaquin_flow_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[18]] <-  glm.nb(spring_expanded_salvage~month_factor*san_joaquin_flow_z+sac_trawl_sr_CPUE_z+export_z, data=data_SR)
+Cand.set.SR[[19]] <-  glm.nb(spring_expanded_salvage~month_factor*export_z, data=data_SR)
+Cand.set.SR[[20]] <-  glm.nb(spring_expanded_salvage~month_factor*export_z+sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[21]] <-  glm.nb(spring_expanded_salvage~month_factor*export_z+san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[22]] <-  glm.nb(spring_expanded_salvage~month_factor*export_z+sac_trawl_sr_CPUE_z+san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[23]] <-  glm.nb(spring_expanded_salvage~month_factor*sac_trawl_sr_CPUE_z, data=data_SR)
+Cand.set.SR[[24]] <-  glm.nb(spring_expanded_salvage~month_factor*sac_trawl_sr_CPUE_z+san_joaquin_flow_z, data=data_SR)
+Cand.set.SR[[25]] <-  glm.nb(spring_expanded_salvage~month_factor*sac_trawl_sr_CPUE_z+export_z, data=data_SR)
+Cand.set.SR[[26]] <-  glm.nb(spring_expanded_salvage~month_factor*sac_trawl_sr_CPUE_z+export_z+san_joaquin_flow_z, data=data_SR)
+
+
+##create a vector of names to trace back models in set
+Modnames <- paste("mod","SpringRun", 1:length(Cand.set.SR), sep = "_")
+
+##generate AICc table
+aictab(cand.set = Cand.set.SR, modnames = Modnames, sort = TRUE)
+
+```
+
+```{r spring-run model results, message=FALSE, warning=FALSE}
+summary(Cand.set.SR[[16]])
+
+# Model coefficients
+est <- cbind(Estimate = coef(Cand.set.SR[[16]]), confint(Cand.set.SR[[16]]))
+exp(est)
+
+# Model residuals
+data_SR$residuals <- resid(Cand.set.SR[[16]])
+
+hist(data_SR$residuals, breaks = 20)
+
+# Looping prediction of best model
+
+Pred.dat <- data.frame(Observed.dat = rep(NA, nrow(data_SR)), Pred.NegBin = rep(NA, nrow(data_SR)))
+head(Pred.dat)
+
+for(i in 1:nrow(data_SR)){
+  Hat.dat <- data_SR[-i, ]
+  CV.dat <- data_SR[i, ]
+  Temp.mod1 <- glm.nb(spring_expanded_salvage~month_factor*san_joaquin_flow_z+export_z, data=Hat.dat)
+  Pred.dat[i, "Observed.dat"] <- CV.dat[, "spring_expanded_salvage"]
+  Pred.dat[i, "Pred.NegBin"] <- predict(Temp.mod1, newdata = CV.dat, type="response")
+}
+
+head(Pred.dat)
+
+plot(Pred.dat$Observed.dat, Pred.dat$Pred.NegBin)
+
+loocv.lm <- lm(log(Pred.NegBin+1)~log(Observed.dat+1), data=Pred.dat)
+summary(loocv.lm)
+#Multiple R-squared:  0.6049,	Adjusted R-squared:  0.6013 
+
+plot(log(Pred.dat$Observed.dat), log(Pred.dat$Pred.NegBin), xlim=c(0, 9), ylim=c(0, 9))
+abline(loocv.lm, col="red")
+
+# Redo model with standard (original) values and ensure that results are essentially the same
+model_sr_final<-glm.nb(spring_expanded_salvage~month_factor*san_joaquin_flow+export, data=data_SR)
+
+# Saving final spring-run model
+saveRDS(model_sr_final, file = "model_spring_run_final.rda")
+```
 
