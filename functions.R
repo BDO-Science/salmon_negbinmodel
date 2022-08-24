@@ -1,7 +1,7 @@
 #List of functions to pull data for the negative binomial model
 
 
-#Code from Trinh Nguyen's Entrainment Data Pull 8/4/2022; fixed incorrect end_date url
+#Code from Trinh Nguyen's OMR Data Pull 8/4/2022; fixed incorrect end_date url
 calc_OMR <- function(dateStart, dateEnd = NULL, timing, extrap = F, proof = F, showQAQC = F) {
   # Do you have the two required packages?
   if (!requireNamespace("zoo", quietly = TRUE)) {

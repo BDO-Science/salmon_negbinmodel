@@ -10,7 +10,7 @@ library(janitor)
 source("functions.R")
 
 #####
-#Install "deltaFish" package if necessary
+#Install "deltafish" package if necessary
 # Enable this universe
 #options(repos = c(sbashevkin = 'https://sbashevkin.r-universe.dev',CRAN = 'https://cloud.r-project.org'))
 ## Install the package

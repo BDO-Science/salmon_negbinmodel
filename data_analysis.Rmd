@@ -1,0 +1,77 @@
+---
+title: "Salmon Salvage NegBin Model"
+author: "Brian Mahardja"
+date: '2022-08-24'
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Estimating Salvage via Negative Binomial Regression
+
+Authors: Brian Mahardja, Catarina Pien, Michael Beakes
+
+```{r packages, message=FALSE, echo=FALSE}
+
+library("MASS")
+library("MuMIn")
+library("pscl")
+library("tidyverse")
+library("AICcmodavg")
+library("knitr")
+
+setwd("~/GitHub/salmon_negbinmodel")
+```
+
+## Background
+
+To evaluate potential changes to the number of length-at-date winter-run and spring-run Chinook Salmon salvaged at the CVP and SWP pumping facilities based on the alternatives, Reclamation analyzed historical salvage data via negative binomial regression. Negative binomial regression requires estimation of a dispersion parameter rather than assuming the variance is equal to the mean. In doing so, negative binomial regression can account for overdispersion, which is common in ecological data (e.g., the salvage dataset) as well as reduce the likelihood of biased coefficient estimation.  
+
+```{r load data}
+
+monthly_data <- read.csv("negbinmodel_monthly_dataset.csv")
+
+str(monthly_data)
+
+```
+
+## Methods
+
+### Data
+Winter-run and spring-run length-at-date Chinook Salmon salvage records from January 1st 1993 to December 31st 2020 were gathered from the California Department of Fish and Wildlife salvage database posted at the SacPAS website (http://www.cbr.washington.edu/sacramento/data/query_loss_detail.html). To incorporate hydrodynamic effects on salvage count into the models, Delta export (QEXPORT), Sacramento River flow (QSAC), and San Joaquin River (QSJR) were extracted from the California Department of Water Resources Dayflow data (https://data.cnra.ca.gov/dataset/dayflow). Additionally, combined Old and Middle River flow (OMR) data were pulled from the U.S. Geological Survey National Water Information System website (https://nwis.waterdata.usgs.gov/nwis; stations 11313405 and 11312676). Because data gaps exist in the Old and Middle River flow data, ordinary least squares regressions were conducted so that each dataset can be used to predict, and therefore fill, missing data in the other (adjusted $R^2$: 0.97). Lastly, to account for the variable numbers of juvenile Chinook Salmon entering the Delta by year and month, Sacramento Trawl data were acquired from the Delta Juvenile Fish Monitoring Program through the 'deltafish' package available on GitHub (https://github.com/jeanetteclark/deltaFish). Sacramento Trawl catch per unit trawl for each day was calculated for both winter-run sized and spring-run sized Chinook Salmon. 
+
+```{r monthly summary, echo=FALSE}
+#Preliminary assessment for month to use
+month_summary<- monthly_data %>% group_by(month) %>% summarise(mean_winter_lad_loss=mean(winter_lad_loss),sd_winter_lad_loss=sd(winter_lad_loss),                                               mean_spring_lad_loss=mean(spring_lad_loss),sd_spring_lad_loss=sd(spring_lad_loss))
+#Based on the values on the summary table, we should use:
+#December-April for winter-run
+#March-June for Spring-run
+
+kable(month_summary, caption="Monthly average value summary table")
+```
+
+For each variable, data were averaged by month and year with missing data removed. Because monthly salvage values tend to be low or mostly zeroes in for most months out of the year, only December to April period was used for winter-run Chinook Salmon analysis, and only March to June period was used for spring-run Chinook Salmon analysis. Overdispersion was apparent during initial inspection  the response variable data (mean $\neq$ variance) supporting the use of negative binomial regression in this analysis. 
+
+```{r response variable data, echo=FALSE}
+
+par(mfrow=c(1,1), oma=c(3, 3.5, 0.5, 0.5), mar=c(0.5, 0.75, 0.5, 0.25), bty="l")
+
+hist(monthly_data %>% filter(month %in% c(12,1,2,3,4)) %>% .$winter_expanded_salvage, breaks = 100, las=1, xlab="Winter run salvage(n)", ylab="Frequency", main="")
+mtext(1, text="Monthly mean salvage of winter-run sized Chinook Salmon (n)", line = 2.5, cex=0.75)
+mtext(2, text="Frequency", line = 3)
+
+par(mfrow=c(1,1), oma=c(3, 3.5, 0.5, 0.5), mar=c(0.5, 0.75, 0.5, 0.25), bty="l")
+
+hist(monthly_data %>% filter(month %in% c(3,4,5,6)) %>% .$spring_expanded_salvage, breaks = 100, las=1, xlab="Winter run salvage(n)", ylab="Frequency", main="")
+mtext(1, text="Monthly mean salvage of spring-run sized Chinook Salmon (n)", line = 2.5, cex=0.75)
+mtext(2, text="Frequency", line = 3)
+
+```
+
+### VIF analysis
+
+To avoid collinearity, variance inflation factor (VIF) analyses were conducted for all predictor variables mentioned above. A full negative binomial regression model with all predictor variables was constructed for each Chinook Salmon race (winter-run and spring-run), followed by an assessment of VIF values. Per Zuur et al. (2010), variable with the highest VIF value was removed and models were re-run until all VIF values are below 3. For both winter-run and spring-run Chinook Salmon models, OMR had the highest VIF value (>25) and had to be removed from further analysis along with Sacramento River flow. 
+
+
