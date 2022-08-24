@@ -24,8 +24,7 @@ data_WR<-monthly_data %>% filter(month %in% c(12,1,2,3,4)) %>%
          export_z = scale(export),
          delta_outflow_z = scale(delta_outflow),
          omr_flow_extrap_z = scale(omr_flow_extrap),
-         sac_trawl_wr_CPUE = sac_trawl_wr_count/sac_trawl_sample_size,
-         sac_trawl_wr_CPUE_z = scale(sac_trawl_wr_CPUE),
+         sac_trawl_wr_CPUE_z = scale(sac_trawl_wr_cpue),
          month_factor=as.factor(month))
 hist(data_WR$winter_lad_loss)
 
@@ -37,8 +36,7 @@ data_SR<-monthly_data %>% filter(month %in% c(3,4,5,6)) %>%
          export_z = scale(export),
          delta_outflow_z = scale(delta_outflow),
          omr_flow_extrap_z = scale(omr_flow_extrap),
-         sac_trawl_sr_CPUE = sac_trawl_sr_count/sac_trawl_sample_size,
-         sac_trawl_sr_CPUE_z = scale(sac_trawl_sr_CPUE),
+         sac_trawl_sr_CPUE_z = scale(sac_trawl_sr_cpue),
          month_factor=as.factor(month)
   )
 
