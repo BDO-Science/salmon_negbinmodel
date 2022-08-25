@@ -22,6 +22,7 @@ library("tidyverse")
 library("AICcmodavg")
 library("knitr")
 library("PerformanceAnalytics")
+library("rsq")
 
 setwd("~/GitHub/salmon_negbinmodel")
 ```
