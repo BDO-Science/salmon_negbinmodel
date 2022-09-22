@@ -1,7 +1,7 @@
 ---
 title: "Salmon Salvage NegBin Model"
 author: "Brian Mahardja"
-date: '2022-08-24'
+date: '2022-09-22'
 output: word_document
 ---
 
@@ -34,8 +34,6 @@ To evaluate potential changes to the number of length-at-date winter-run and spr
 ```{r load data}
 
 monthly_data <- read.csv("negbinmodel_monthly_dataset.csv")
-
-str(monthly_data)
 
 ```
 

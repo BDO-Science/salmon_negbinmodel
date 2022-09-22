@@ -115,6 +115,9 @@ sactrawl_data_SR<- sactrawl_data %>% group_by(Station, Date, Datetime, SampleID)
 
 #Combine
 sactrawl_data<- full_join(sactrawl_data_WR,sactrawl_data_SR)
+
+sactrawl_data <- sactrawl_data %>% mutate(SacTrawlSR_dailyCPUE=SacTrawlSR_Count/SacTrawl_SampleSize,
+                                          SacTrawlWR_dailyCPUE=SacTrawlWR_Count/SacTrawl_SampleSize)
 remove(sactrawl_data_WR,sactrawl_data_SR)
 
 
@@ -138,14 +141,13 @@ write.csv(final_df,file="negbinmodel_daily_dataset.csv", row.names = F)
 # Monthly dataset
 monthly_df <- final_df %>%
   mutate(year = year(date),
-         month = month(date), 
-         sac_trawl_wr_cpue = sac_trawl_wr_count/sac_trawl_sample_size,
-         sac_trawl_sr_cpue = sac_trawl_sr_count/sac_trawl_sample_size) %>%
+         month = month(date)) %>%
   select(-date) %>%
   group_by(year, month) %>%
   summarize(across(.cols = everything(), ~mean(.x,na.rm = TRUE)))%>%
   ungroup() %>%
-  mutate(across(.cols = everything(), ~ifelse(is.nan(.x), NA, .x)))
+  mutate(across(.cols = everything(), ~ifelse(is.nan(.x), NA, .x))) %>%
+  rename(sac_trawl_wr_cpue=sac_trawl_wr_daily_cpue, sac_trawl_sr_cpue=sac_trawl_sr_daily_cpue)
 
 write.csv(monthly_df, file = "negbinmodel_monthly_dataset.csv", row.names = F)
 
