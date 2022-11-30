@@ -237,7 +237,7 @@ abline(loocv.lm, col="red")
 model_wr_final<-glm.nb(winter_expanded_salvage~month_factor*sac_trawl_wr_cpue+export+san_joaquin_flow, data=data_WR)
 
 # Saving final winter-run model
-saveRDS(model_wr_final, file = "model_winter_run_final.rda")
+saveRDS(model_wr_final, file = "model_winter_run_final.rds")
 
 
 ```
@@ -325,6 +325,6 @@ abline(loocv.lm, col="red")
 model_sr_final<-glm.nb(spring_expanded_salvage~month_factor*san_joaquin_flow+export, data=data_SR)
 
 # Saving final spring-run model
-saveRDS(model_sr_final, file = "model_spring_run_final.rda")
+saveRDS(model_sr_final, file = "model_spring_run_final.rds")
 ```
 
